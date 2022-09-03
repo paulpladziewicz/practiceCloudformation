@@ -1,0 +1,68 @@
+Resources:
+  ApiGatewayToS3RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Description: Way to make S3 asset available via API Gateway
+    Properties:
+      Name: trinityTest-${opt:stage, 'dev'}
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+  ApiGatewayMethodGetRoot:
+    Type: AWS::ApiGateway::Method
+    Description: Located at root resource to proxy to S3 bucket website
+    Properties:
+      HttpMethod: GET
+      ResourceId:
+        Fn::GetAtt: [ ApiGatewayToS3RestApi, RootResourceId ]
+      RestApiId: !Ref ApiGatewayToS3RestApi
+      ApiKeyRequired: false
+      AuthorizationType: NONE
+      Integration:
+        IntegrationHttpMethod: GET
+        Type: HTTP_PROXY
+        Uri:
+          Fn::GetAtt: [ SwaggerSite, WebsiteURL ]
+  ApiGatewayResourceItem:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId:
+        Fn::GetAtt: [ ApiGatewayToS3RestApi, RootResourceId ]
+      PathPart: '{item}'
+      RestApiId: !Ref ApiGatewayToS3RestApi
+  ApiGatewayMethodGetItem:
+    Type: AWS::ApiGateway::Method
+    Description: Located at {item} resource to get items from S3 bucket
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref ApiGatewayResourceItem
+      RestApiId: !Ref ApiGatewayToS3RestApi
+      ApiKeyRequired: false
+      AuthorizationType: NONE
+      RequestParameters:
+        method.request.path.item: true
+        method.request.header.Content-Disposition: false
+        method.request.header.Content-Type: false
+      MethodResponses:
+        - ResponseParameters:
+            method.response.header.Content-Disposition: true
+            method.response.header.Content-Type: true
+          StatusCode: 200
+      Integration:
+        RequestParameters:
+          integration.request.path.item: method.request.path.item
+          integration.request.header.Content-Disposition: method.request.header.Content-Disposition
+          integration.request.header.Content-Type: method.request.header.Content-Type
+
+        IntegrationHttpMethod: GET
+        Type: AWS
+        Uri:
+          Fn::Join: [ '',[ 'arn:aws:apigateway:us-east-1:s3:', 'path/', !Ref SwaggerSite, '/{item}' ] ]
+        Credentials:
+          Fn::GetAtt: [ GatewayRole, Arn ]
+        IntegrationResponses:
+          - StatusCode: 200
+            SelectionPattern: 200
+            ResponseParameters:
+              method.response.header.Content-Disposition: integration.response.header.Content-Disposition
+              method.response.header.Content-Type: integration.response.header.Content-Type
+

@@ -1,0 +1,15 @@
+Resources:
+  UserTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: UserTable
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+          - 
+            AttributeName: "user_id"
+            AttributeType: "S"
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
